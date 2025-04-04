@@ -1,0 +1,161 @@
+--** Variáveis Globais **--
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local ScreenGui = Instance.new("ScreenGui")
+local MenuFrame = Instance.new("Frame")
+local GitHubButton = Instance.new("ImageButton")
+local BypassButton = Instance.new("TextButton")
+local MinimizeButton = Instance.new("TextButton")
+local CloseButton = Instance.new("TextButton")
+local IsMinimized = false
+local dragging, dragInput, dragStart, startPos
+
+--** Configuração do GUI **--
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+MenuFrame.Size = UDim2.new(0, 300, 0, 200)
+MenuFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+MenuFrame.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+MenuFrame.BorderSizePixel = 0
+MenuFrame.Active = true
+MenuFrame.Draggable = false -- desativado para usar custom drag
+MenuFrame.Parent = ScreenGui
+
+--** Cantos arredondados **--
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = MenuFrame
+
+--** Botão GitHub (com imagem externa) **--
+GitHubButton.Size = UDim2.new(0, 50, 0, 50)
+GitHubButton.Position = UDim2.new(0, 10, 0, 10)
+GitHubButton.Image = "https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" -- Substitua pelo link correto
+GitHubButton.Parent = MenuFrame
+GitHubButton.BackgroundTransparency = 1
+
+--** Botão Bypass **--
+BypassButton.Size = UDim2.new(0, 150, 0, 50)
+BypassButton.Position = UDim2.new(0.5, -75, 0.5, -25)
+BypassButton.Text = "Bypass"
+BypassButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+BypassButton.Parent = MenuFrame
+
+--** Botão Minimizar **--
+MinimizeButton.Size = UDim2.new(0, 40, 0, 40)
+MinimizeButton.Position = UDim2.new(1, -90, 0, 10)
+MinimizeButton.Text = "-"
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+MinimizeButton.Parent = MenuFrame
+
+--** Botão Fechar **--
+CloseButton.Size = UDim2.new(0, 40, 0, 40)
+CloseButton.Position = UDim2.new(1, -45, 0, 10)
+CloseButton.Text = "X"
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+CloseButton.Parent = MenuFrame
+
+--** Funções **--
+local function minimizeMenu()
+    if IsMinimized then
+        MenuFrame:TweenSize(UDim2.new(0, 300, 0, 200), "Out", "Quad", 0.2, true)
+        GitHubButton.Visible = true
+        BypassButton.Visible = true
+        IsMinimized = false
+    else
+        MenuFrame:TweenSize(UDim2.new(0, 100, 0, 60), "Out", "Quad", 0.2, true)
+        GitHubButton.Visible = false
+        BypassButton.Visible = false
+        IsMinimized = true
+    end
+end
+
+local function removeMenu()
+    ScreenGui:Destroy()
+end
+
+local function openGitHub()
+    local url = "https://github.com/zytleee"
+    setclipboard(url)
+end
+
+local function bypassVoiceChat()
+    game:GetService("VoiceChatService"):joinVoice()
+end
+
+--** Arrastar o menu manualmente **--
+MenuFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MenuFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MenuFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+--** Redimensionar pela borda inferior direita (simples) **--
+local ResizeCorner = Instance.new("Frame")
+ResizeCorner.Size = UDim2.new(0, 20, 0, 20)
+ResizeCorner.Position = UDim2.new(1, -20, 1, -20)
+ResizeCorner.BackgroundColor3 = Color3.fromRGB(170, 170, 170)
+ResizeCorner.Parent = MenuFrame
+ResizeCorner.Active = true
+ResizeCorner.Draggable = false
+
+local resizing = false
+ResizeCorner.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        resizing = true
+        dragStart = input.Position
+        startPos = MenuFrame.Size
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                resizing = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MenuFrame.Size = UDim2.new(
+            startPos.X.Scale,
+            math.max(100, startPos.X.Offset + delta.X),
+            startPos.Y.Scale,
+            math.max(60, startPos.Y.Offset + delta.Y)
+        )
+    end
+end)
+
+--** Conexões de Eventos **--
+GitHubButton.MouseButton1Click:Connect(openGitHub)
+BypassButton.MouseButton1Click:Connect(bypassVoiceChat)
+MinimizeButton.MouseButton1Click:Connect(minimizeMenu)
+CloseButton.MouseButton1Click:Connect(removeMenu)
+
+--** Teclado **--
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        minimizeMenu()
+    elseif input.KeyCode == Enum.KeyCode.X then
+        removeMenu()
+    end
+end)
