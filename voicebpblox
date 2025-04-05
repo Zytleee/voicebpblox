@@ -1,161 +1,198 @@
---** Variáveis Globais **--
+-- Variáveis Globais
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
-local ScreenGui = Instance.new("ScreenGui")
-local MenuFrame = Instance.new("Frame")
-local GitHubButton = Instance.new("ImageButton")
-local BypassButton = Instance.new("TextButton")
-local MinimizeButton = Instance.new("TextButton")
-local CloseButton = Instance.new("TextButton")
-local IsMinimized = false
-local dragging, dragInput, dragStart, startPos
+local TweenService = game:GetService("TweenService")
 
---** Configuração do GUI **--
+-- GUI Principal
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
+local MenuFrame = Instance.new("Frame")
 MenuFrame.Size = UDim2.new(0, 300, 0, 200)
 MenuFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-MenuFrame.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+MenuFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 MenuFrame.BorderSizePixel = 0
 MenuFrame.Active = true
-MenuFrame.Draggable = false -- desativado para usar custom drag
+MenuFrame.Draggable = false
 MenuFrame.Parent = ScreenGui
 
---** Cantos arredondados **--
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = MenuFrame
+Instance.new("UICorner", MenuFrame).CornerRadius = UDim.new(0, 12)
+local shadow = Instance.new("UIStroke", MenuFrame)
+shadow.Color = Color3.fromRGB(0, 0, 0)
+shadow.Thickness = 2
+shadow.Transparency = 0.5
 
---** Botão GitHub (com imagem externa) **--
+-- Função de estilo para botões
+local function styleButton(btn, color, textColor)
+	btn.BackgroundColor3 = color
+	btn.TextColor3 = textColor
+	btn.Font = Enum.Font.GothamBold
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke", btn)
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = 1
+	stroke.Transparency = 0.6
+
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.15), {
+			BackgroundColor3 = color:lerp(Color3.new(1, 1, 1), 0.1)
+		}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.15), {
+			BackgroundColor3 = color
+		}):Play()
+	end)
+end
+
+-- GitHub Button
+local GitHubButton = Instance.new("ImageButton")
 GitHubButton.Size = UDim2.new(0, 50, 0, 50)
 GitHubButton.Position = UDim2.new(0, 10, 0, 10)
-GitHubButton.Image = "https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" -- Substitua pelo link correto
-GitHubButton.Parent = MenuFrame
+GitHubButton.Image = "rbxassetid://95577731741493" -- ícone GitHub
 GitHubButton.BackgroundTransparency = 1
+GitHubButton.Parent = MenuFrame
+Instance.new("UICorner", GitHubButton).CornerRadius = UDim.new(1, 0)
 
---** Botão Bypass **--
+-- Bypass Button
+local BypassButton = Instance.new("TextButton")
 BypassButton.Size = UDim2.new(0, 150, 0, 50)
 BypassButton.Position = UDim2.new(0.5, -75, 0.5, -25)
 BypassButton.Text = "Bypass"
-BypassButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
 BypassButton.Parent = MenuFrame
+styleButton(BypassButton, Color3.fromRGB(50, 50, 50), Color3.fromRGB(255, 255, 255))
 
---** Botão Minimizar **--
+-- Cadeado acima do botão
+local LockIcon = Instance.new("ImageLabel")
+LockIcon.Size = UDim2.new(0, 30, 0, 30)
+LockIcon.Position = UDim2.new(0.5, -15, 0.5, -60)
+LockIcon.Image = "rbxassetid://108623779138047" -- ícone de cadeado
+LockIcon.BackgroundTransparency = 1
+LockIcon.Parent = MenuFrame
+
+-- Minimizar
+local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Size = UDim2.new(0, 40, 0, 40)
 MinimizeButton.Position = UDim2.new(1, -90, 0, 10)
 MinimizeButton.Text = "-"
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
 MinimizeButton.Parent = MenuFrame
+styleButton(MinimizeButton, Color3.fromRGB(230, 230, 230), Color3.fromRGB(0, 0, 0))
 
---** Botão Fechar **--
+-- Fechar
+local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 40, 0, 40)
 CloseButton.Position = UDim2.new(1, -45, 0, 10)
 CloseButton.Text = "X"
-CloseButton.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
 CloseButton.Parent = MenuFrame
+styleButton(CloseButton, Color3.fromRGB(232, 17, 35), Color3.fromRGB(255, 255, 255))
 
---** Funções **--
-local function minimizeMenu()
-    if IsMinimized then
-        MenuFrame:TweenSize(UDim2.new(0, 300, 0, 200), "Out", "Quad", 0.2, true)
-        GitHubButton.Visible = true
-        BypassButton.Visible = true
-        IsMinimized = false
-    else
-        MenuFrame:TweenSize(UDim2.new(0, 100, 0, 60), "Out", "Quad", 0.2, true)
-        GitHubButton.Visible = false
-        BypassButton.Visible = false
-        IsMinimized = true
-    end
-end
-
-local function removeMenu()
-    ScreenGui:Destroy()
-end
-
-local function openGitHub()
-    local url = "https://github.com/zytleee"
-    setclipboard(url)
-end
-
-local function bypassVoiceChat()
-    game:GetService("VoiceChatService"):joinVoice()
-end
-
---** Arrastar o menu manualmente **--
+-- Arrastar com mouse ou toque
+local dragging = false
+local dragStart, startPos
 MenuFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MenuFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MenuFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MenuFrame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		MenuFrame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
 end)
 
---** Redimensionar pela borda inferior direita (simples) **--
+-- Redimensionar no canto inferior direito
 local ResizeCorner = Instance.new("Frame")
 ResizeCorner.Size = UDim2.new(0, 20, 0, 20)
 ResizeCorner.Position = UDim2.new(1, -20, 1, -20)
-ResizeCorner.BackgroundColor3 = Color3.fromRGB(170, 170, 170)
+ResizeCorner.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
 ResizeCorner.Parent = MenuFrame
 ResizeCorner.Active = true
-ResizeCorner.Draggable = false
+Instance.new("UICorner", ResizeCorner).CornerRadius = UDim.new(0, 6)
 
 local resizing = false
 ResizeCorner.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        resizing = true
-        dragStart = input.Position
-        startPos = MenuFrame.Size
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                resizing = false
-            end
-        end)
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		resizing = true
+		dragStart = input.Position
+		startPos = MenuFrame.Size
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				resizing = false
+			end
+		end)
+	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MenuFrame.Size = UDim2.new(
-            startPos.X.Scale,
-            math.max(100, startPos.X.Offset + delta.X),
-            startPos.Y.Scale,
-            math.max(60, startPos.Y.Offset + delta.Y)
-        )
-    end
+	if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		MenuFrame.Size = UDim2.new(
+			startPos.X.Scale,
+			math.max(100, startPos.X.Offset + delta.X),
+			startPos.Y.Scale,
+			math.max(60, startPos.Y.Offset + delta.Y)
+		)
+	end
 end)
 
---** Conexões de Eventos **--
+-- Variáveis e funções
+local IsMinimized = false
+
+local function minimizeMenu()
+	if IsMinimized then
+		MenuFrame:TweenSize(UDim2.new(0, 300, 0, 200), "Out", "Quad", 0.25, true)
+		GitHubButton.Visible = true
+		BypassButton.Visible = true
+		LockIcon.Visible = true
+		IsMinimized = false
+	else
+		MenuFrame:TweenSize(UDim2.new(0, 100, 0, 60), "Out", "Quad", 0.25, true)
+		GitHubButton.Visible = false
+		BypassButton.Visible = false
+		LockIcon.Visible = false
+		IsMinimized = true
+	end
+end
+
+local function removeMenu()
+	ScreenGui:Destroy()
+end
+
+local function openGitHub()
+	setclipboard("https://github.com/zytleee")
+end
+
+local function bypassVoiceChat()
+	game:GetService("VoiceChatService"):joinVoice()
+end
+
+-- Conexões de eventos
 GitHubButton.MouseButton1Click:Connect(openGitHub)
 BypassButton.MouseButton1Click:Connect(bypassVoiceChat)
 MinimizeButton.MouseButton1Click:Connect(minimizeMenu)
 CloseButton.MouseButton1Click:Connect(removeMenu)
 
---** Teclado **--
+-- Teclas de atalho
 UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        minimizeMenu()
-    elseif input.KeyCode == Enum.KeyCode.X then
-        removeMenu()
-    end
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		minimizeMenu()
+	elseif input.KeyCode == Enum.KeyCode.X then
+		removeMenu()
+	end
 end)
